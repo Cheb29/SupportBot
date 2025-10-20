@@ -16,7 +16,7 @@ def invoice_kb(inv_id: int) -> InlineKeyboardMarkup:
 
 MANAGER_RK = ReplyKeyboardMarkup(
     keyboard=[
-        [KeyboardButton(text="🧾 /invoices"), KeyboardButton(text="📚 /list_chats")],
+        [KeyboardButton(text="/invoices"), KeyboardButton(text="/list_chats")],
     ],
     resize_keyboard=True,
     input_field_placeholder="Выберите действие…",
