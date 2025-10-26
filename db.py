@@ -66,6 +66,13 @@ CREATE TABLE IF NOT EXISTS invoice_cards (
     PRIMARY KEY(manager_id, invoice_id)
 );
 
+CREATE TABLE IF NOT EXISTS start_msg (
+    manager_id  INTEGER PRIMARY KEY,
+    chat_id     INTEGER,
+    msg_id      INTEGER,
+    FOREIGN KEY (chat_id) REFERENCES chats(chat_id)
+);
+
 CREATE INDEX IF NOT EXISTS idx_chats_seen ON chats(last_seen_ts);
 CREATE INDEX IF NOT EXISTS idx_invoices_chat ON invoices(chat_id);
 CREATE INDEX IF NOT EXISTS idx_events_invoice ON invoice_events(invoice_id, id);
@@ -413,3 +420,24 @@ async def get_invoice_card_for_manager(invoice_id: int, manager_id: int) -> Opti
         )
         row = await cur.fetchone()
         return (row[0], row[1]) if row else None
+    
+
+async def set_chat_status_msg(manager_id: int, chat_id: int, msg_id: int, db_path: str = DB_PATH) -> None:
+    async with aiosqlite.connect(db_path) as db:
+        await db.execute(
+            """
+            INSERT INTO start_msg (manager_id, chat_id, msg_id)
+            VALUES (?, ?, ?)
+            ON CONFLICT (manager_id) DO UPDATE
+            SET chat_id = excluded.chat_id,
+                msg_id = excluded.msg_id
+            """,
+            (manager_id, chat_id, msg_id),
+        )
+        await db.commit()
+
+async def get_chat_status_msg(manager_id: int, db_path: str = DB_PATH) -> Optional[tuple[int, int]]:
+    async with aiosqlite.connect(db_path) as db:
+        cur = await db.execute("SELECT msg_id,chat_id FROM start_msg WHERE manager_id = ?", (manager_id,))
+        row = await cur.fetchone()
+    return row if row else None 

@@ -3,6 +3,7 @@ from typing import Optional
 from aiogram.types import Message
 from aiogram.enums import ContentType
 from html import escape as _html_escape
+from aiogram import Bot
 
 @dataclass
 class AuthorInfo:
@@ -46,3 +47,12 @@ def escape_html(s: str | None) -> str:
     if s is None:
         return ""
     return _html_escape(str(s), quote=False)
+
+
+# --- Функция для редактирования сообщения
+async def edit_message(bot: Bot, chat_id: int, msg_id: int, text: str ):
+    await bot.edit_message_text(
+        chat_id=chat_id,
+        message_id=msg_id,
+        text=text,
+    )

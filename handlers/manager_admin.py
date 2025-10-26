@@ -6,11 +6,13 @@ from aiogram.filters import Command, CommandObject
 from aiogram.types import Message, ReplyKeyboardRemove
 from aiogram.enums import ChatType
 from config import MANAGER_IDS
-from db import sqlite_checkpoint, sqlite_backup_once, list_chats_like,\
-      set_selection, list_open_invoices_with_state
-from utils import escape_html
+from db import get_chat_status_msg, sqlite_checkpoint, sqlite_backup_once, list_chats_like,\
+      set_selection, list_open_invoices_with_state, get_selection,\
+      set_chat_status_msg
+from utils import edit_message, escape_html
 from datetime import datetime
 from kb import MANAGER_RK
+from aiogram.exceptions import TelegramBadRequest
 
 def setup(dp: Dispatcher, bot: Bot) -> None:
     dp.message.register(db_backup_now, Command("db_backup"), F.chat.type == ChatType.PRIVATE)
@@ -129,12 +131,21 @@ async def cmd_select_chat(message: Message, command: CommandObject):
             await message.answer("Чат не найден.")
             return
     await set_selection(message.from_user.id, chosen)
+
+    row = await get_chat_status_msg(message.from_user.id)
+    message_id = row[0]
+    chat_id = row[1]
+    try:
+        await edit_message(message.bot, chat_id, message_id, text = f'Текущий чат id={chosen}.Это сообщение будет обновляться.')
+    except TelegramBadRequest as e:
+        if "message is not modified" in str(e).lower():
+            return
+        
     await message.answer(f"✔ Выбран чат id={chosen}. /where — проверить.")
 
 async def cmd_where(message: Message):
     if message.from_user.id not in MANAGER_IDS:
         return
-    from db import get_selection
     sel = await get_selection(message.from_user.id)
     if not sel:
         await message.answer("Целевой чат не выбран. Используйте /select_chat.")
@@ -150,6 +161,7 @@ async def cmd_start(message: Message):
         if message.chat.type == ChatType.PRIVATE:
             await message.answer("👋 Это бот поддержки. В группе используйте /support или тег бота.")
         return
+    
 
     text = (
         "👋 Бот поддержки запущен.\n"
@@ -163,6 +175,14 @@ async def cmd_start(message: Message):
     )
     await message.answer(text, reply_markup=MANAGER_RK)
 
+    sel = await get_selection(message.from_user.id)
+    if not sel:
+        sent = await message.answer('Текущий чат не выбран. Используйте /select_chat.')
+    ch = await message.bot.get_chat(sel)
+    sent = await message.answer(f'Текущий чат {ch.title}. Это сообщение будет обновляться.')
+    await set_chat_status_msg(message.from_user.id, message.chat.id, sent.message_id)
+    
+    
 
 def _fmt_ts(ts: int) -> str:
     try:

@@ -5,6 +5,9 @@ from aiogram.client.default import DefaultBotProperties
 from config import BOT_TOKEN, BACKUP_EVERY, log
 from db import init_db, sqlite_checkpoint, sqlite_backup_once
 from handlers import setup_all
+from func_logger import setup_logging # Инициализация логгера
+
+
 
 async def periodic_backup_task():
     while True:
@@ -29,6 +32,7 @@ async def main():
 
     try:
         me = await bot.get_me()
+        log = setup_logging()
         log.info("Bot starting as @%s (id=%s)", me.username, me.id)
 
         await dp.start_polling(
